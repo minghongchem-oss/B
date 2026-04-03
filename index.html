@@ -3,20 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Oscillator Study — SHM, Damping, Resonance</title>
+  <title>When Does Effort Matter?</title>
   <style>
     :root {
-      --bg: #0b0e13;
-      --panel: #11161f;
-      --panel-soft: #0f141c;
-      --stroke: #2a3342;
-      --text: #d4dde9;
-      --muted: #8c97aa;
-      --accent: #8ca7c8;
-      --accent-soft: rgba(140, 167, 200, 0.3);
-      --energy: #c8b48c;
-      --danger: #b08f8f;
-      --ok: #98af9a;
+      --bg: #070a0f;
+      --panel: #0f141d;
+      --panel-soft: #121a25;
+      --stroke: #273041;
+      --text: #d3dceb;
+      --muted: #8b96aa;
+      --accent: #8ea4c2;
+      --accent-soft: rgba(142, 164, 194, 0.2);
+      --warn: #b09b92;
     }
 
     * { box-sizing: border-box; }
@@ -24,773 +22,703 @@
     html, body {
       margin: 0;
       height: 100%;
-      background: radial-gradient(100% 140% at 10% 0%, #131a25 0%, var(--bg) 45%, #080a0f 100%);
+      background: radial-gradient(circle at 10% -10%, #172131 0%, var(--bg) 52%, #05070b 100%);
       color: var(--text);
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      letter-spacing: 0.01em;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     }
 
     .app {
       display: grid;
-      grid-template-columns: 300px 1fr;
+      grid-template-columns: 320px 1fr 360px;
       grid-template-rows: 1fr auto;
-      gap: 14px;
+      gap: 12px;
       height: 100vh;
-      padding: 14px;
+      padding: 12px;
     }
 
-    .controls {
-      grid-row: 1 / span 2;
-      background: linear-gradient(180deg, rgba(17,22,31,0.9), rgba(14,19,28,0.9));
+    .panel {
+      background: linear-gradient(180deg, rgba(15,20,29,0.93), rgba(11,15,22,0.92));
       border: 1px solid var(--stroke);
       border-radius: 14px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.02);
+      overflow: hidden;
+    }
+
+    .left, .right {
+      padding: 14px;
       overflow: auto;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255,255,255,0.02);
     }
 
-    .title {
-      font-size: 1rem;
+    h1 {
+      margin: 0;
+      font-size: 1.06rem;
       font-weight: 550;
-      color: #e2e9f2;
-      margin-bottom: 2px;
+      letter-spacing: 0.03em;
     }
 
-    .subtitle {
+    .sub {
+      margin: 6px 0 12px;
+      color: var(--muted);
       font-size: 0.8rem;
-      color: var(--muted);
-      margin-bottom: 8px;
       line-height: 1.35;
-    }
-
-    .mode-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-    }
-
-    .mode-btn {
-      background: var(--panel-soft);
-      border: 1px solid var(--stroke);
-      color: var(--muted);
-      border-radius: 9px;
-      padding: 8px 6px;
-      font-size: 0.75rem;
-      cursor: pointer;
-      transition: all 180ms ease;
-    }
-
-    .mode-btn.active {
-      color: var(--text);
-      border-color: rgba(140, 167, 200, 0.6);
-      background: linear-gradient(180deg, rgba(140, 167, 200, 0.17), rgba(140, 167, 200, 0.06));
-      box-shadow: 0 0 0 1px rgba(140, 167, 200, 0.12) inset;
     }
 
     .control {
       display: grid;
       grid-template-columns: 1fr auto;
-      row-gap: 4px;
-      column-gap: 8px;
+      gap: 5px 8px;
+      margin: 9px 0;
       align-items: center;
     }
 
     .control label {
-      font-size: 0.75rem;
-      color: var(--muted);
+      font-size: 0.72rem;
       text-transform: uppercase;
+      color: var(--muted);
       letter-spacing: 0.08em;
     }
 
     .control .value {
       font-size: 0.75rem;
-      color: var(--text);
       font-variant-numeric: tabular-nums;
-      min-width: 54px;
-      text-align: right;
+      color: var(--text);
     }
 
     .control input[type="range"] {
       grid-column: 1 / -1;
       width: 100%;
-      -webkit-appearance: none;
       appearance: none;
       background: transparent;
-      height: 22px;
       margin: 0;
+      height: 20px;
     }
 
     .control input[type="range"]::-webkit-slider-runnable-track {
       height: 3px;
-      background: linear-gradient(90deg, #2a3342, #3a4559);
       border-radius: 2px;
+      background: linear-gradient(90deg, #2c3648, #3c4961);
     }
+
+    .control input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      margin-top: -5px;
+      border-radius: 50%;
+      border: 1px solid #90a7c5;
+      background: #e1e8f3;
+      box-shadow: 0 0 0 4px rgba(142,164,194,0.15);
+    }
+
     .control input[type="range"]::-moz-range-track {
       height: 3px;
-      background: linear-gradient(90deg, #2a3342, #3a4559);
       border-radius: 2px;
       border: none;
+      background: linear-gradient(90deg, #2c3648, #3c4961);
     }
-    .control input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      margin-top: -5.5px;
-      border: 1px solid #91a6c3;
-      background: #e4ecf7;
-      box-shadow: 0 0 0 4px rgba(145,166,195,0.14);
-    }
+
     .control input[type="range"]::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
+      border: 1px solid #90a7c5;
       border-radius: 50%;
-      border: 1px solid #91a6c3;
-      background: #e4ecf7;
-      box-shadow: 0 0 0 4px rgba(145,166,195,0.14);
+      background: #e1e8f3;
     }
 
-    .btn-row {
+    .row {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 7px;
-      margin-top: 2px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-top: 8px;
     }
 
-    .action-btn {
-      background: #121a25;
+    button {
+      background: var(--panel-soft);
       border: 1px solid var(--stroke);
+      border-radius: 9px;
       color: var(--text);
-      border-radius: 10px;
-      padding: 9px 8px;
-      font-size: 0.8rem;
+      padding: 8px 7px;
+      font-size: 0.77rem;
       cursor: pointer;
-      transition: all 160ms ease;
+      transition: border-color 120ms ease, background 120ms ease;
     }
 
-    .action-btn:hover { border-color: #445268; }
-    .action-btn:active { transform: translateY(1px); }
+    button:hover { border-color: #445673; }
+    button.active {
+      background: linear-gradient(180deg, rgba(142,164,194,0.25), rgba(142,164,194,0.08));
+      border-color: rgba(142,164,194,0.75);
+    }
 
-    .status {
-      margin-top: 4px;
-      font-size: 0.74rem;
-      color: var(--muted);
-      line-height: 1.4;
+    .divider {
+      margin: 12px 0;
+      border: 0;
       border-top: 1px solid var(--stroke);
-      padding-top: 10px;
     }
 
-    .viz-grid {
-      display: grid;
-      grid-template-columns: minmax(320px, 45%) 1fr;
-      grid-template-rows: 1fr 1fr;
-      gap: 14px;
-    }
-
-    .panel {
+    .center {
       position: relative;
-      background: linear-gradient(180deg, rgba(17,22,31,0.86), rgba(12,16,24,0.9));
-      border: 1px solid var(--stroke);
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+      display: grid;
+      grid-template-rows: auto 1fr;
     }
 
-    .panel h3 {
-      position: absolute;
-      top: 10px;
-      left: 12px;
-      margin: 0;
-      font-size: 0.73rem;
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--stroke);
       color: var(--muted);
-      letter-spacing: 0.09em;
-      font-weight: 500;
-      text-transform: uppercase;
-      z-index: 3;
+      font-size: 0.78rem;
     }
 
-    .panel canvas {
+    #simCanvas {
       width: 100%;
       height: 100%;
       display: block;
     }
 
-    #systemPanel { grid-row: 1 / span 2; }
-
-    .footer {
-      grid-column: 2;
-      color: #748093;
-      font-size: 0.72rem;
-      letter-spacing: 0.02em;
-      display: flex;
-      justify-content: space-between;
-      padding: 0 6px;
-      align-items: center;
-      min-height: 22px;
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
     }
 
-    @media (max-width: 1120px) {
-      .app { grid-template-columns: 1fr; grid-template-rows: auto auto auto; height: auto; min-height: 100vh; }
-      .controls { grid-row: auto; }
-      .viz-grid { min-height: 68vh; }
-      .footer { grid-column: auto; }
+    .chart {
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(13,18,26,0.8);
+    }
+
+    .chart h3 {
+      margin: 0;
+      padding: 8px 9px;
+      font-size: 0.67rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    .chart canvas {
+      width: 100%;
+      height: 130px;
+      display: block;
+    }
+
+    .metrics {
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(13,18,26,0.8);
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.77rem;
+      margin: 5px 0;
+      color: var(--muted);
+    }
+
+    .metric strong { color: var(--text); font-weight: 540; }
+
+    .observations {
+      grid-column: 2 / 4;
+      padding: 11px 14px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.45;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .obs {
+      padding-left: 10px;
+      border-left: 2px solid var(--accent-soft);
+      max-width: 420px;
+    }
+
+    @media (max-width: 1200px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 520px auto auto;
+      }
+      .observations { grid-column: auto; }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <aside class="controls">
-      <div>
-        <div class="title">Oscillator Instrument</div>
-        <div class="subtitle">Simple harmonic response, damping loss, and driven resonance in one continuous dynamical system.</div>
+    <aside class="panel left">
+      <h1>When Does Effort Matter?</h1>
+      <p class="sub">A social mobility instrument. Adjust structure, watch trajectories, and compare what effort can and cannot overcome.</p>
+
+      <div class="row" id="presetRow">
+        <button data-preset="fair">Fair-ish society</button>
+        <button data-preset="elite">Elite capture</button>
+        <button data-preset="volatile">Volatile world</button>
+        <button data-preset="harsh">Harsh but open</button>
       </div>
 
-      <div class="mode-row" id="modeButtons">
-        <button class="mode-btn active" data-mode="shm">SHM</button>
-        <button class="mode-btn" data-mode="damped">Damped</button>
-        <button class="mode-btn" data-mode="driven">Driven</button>
-      </div>
+      <hr class="divider" />
 
-      <div class="control">
-        <label for="mass">Mass</label><span class="value" id="massVal"></span>
-        <input id="mass" type="range" min="0.4" max="4" step="0.02" value="1.3" />
-      </div>
-      <div class="control">
-        <label for="spring">Spring Constant</label><span class="value" id="springVal"></span>
-        <input id="spring" type="range" min="0.4" max="8" step="0.02" value="2.4" />
-      </div>
-      <div class="control">
-        <label for="damping">Damping</label><span class="value" id="dampingVal"></span>
-        <input id="damping" type="range" min="0" max="1.6" step="0.01" value="0.12" />
-      </div>
-      <div class="control">
-        <label for="driveAmp">Drive Amplitude</label><span class="value" id="driveAmpVal"></span>
-        <input id="driveAmp" type="range" min="0" max="4" step="0.02" value="1.2" />
-      </div>
-      <div class="control">
-        <label for="driveFreq">Drive Frequency</label><span class="value" id="driveFreqVal"></span>
-        <input id="driveFreq" type="range" min="0.1" max="4" step="0.01" value="1.3" />
-      </div>
-      <div class="control">
-        <label for="x0">Initial Displacement</label><span class="value" id="x0Val"></span>
-        <input id="x0" type="range" min="-1.8" max="1.8" step="0.01" value="1.0" />
-      </div>
-      <div class="control">
-        <label for="v0">Initial Velocity</label><span class="value" id="v0Val"></span>
-        <input id="v0" type="range" min="-3" max="3" step="0.01" value="0" />
-      </div>
+      <div id="controls"></div>
 
-      <div class="btn-row">
-        <button class="action-btn" id="playPause">Pause</button>
-        <button class="action-btn" id="reset">Reset</button>
-        <button class="action-btn" id="softReset">Re-seed</button>
+      <hr class="divider" />
+      <div class="row">
+        <button id="playPauseBtn">Pause</button>
+        <button id="resetBtn">Reset</button>
       </div>
-
-      <div class="status" id="statusText"></div>
     </aside>
 
-    <section class="viz-grid">
-      <div class="panel" id="systemPanel">
-        <h3>Mass–Spring State & Energy Exchange</h3>
-        <canvas id="systemCanvas"></canvas>
+    <main class="panel center">
+      <div class="topbar">
+        <span id="yearLabel">Year 0</span>
+        <span>Vertical axis: status · Glow: wealth · Warmth: stress</span>
       </div>
-      <div class="panel" id="timePanel">
-        <h3>Displacement vs Time</h3>
-        <canvas id="timeCanvas"></canvas>
-      </div>
-      <div class="panel" id="resonancePanel">
-        <h3>Resonance Response (A vs ω)</h3>
-        <canvas id="resCanvas"></canvas>
+      <canvas id="simCanvas"></canvas>
+    </main>
+
+    <section class="panel right">
+      <div class="charts">
+        <div class="chart">
+          <h3>Effort vs Outcome</h3>
+          <canvas id="chartEffortOutcome"></canvas>
+        </div>
+        <div class="chart">
+          <h3>Starting Wealth vs Outcome</h3>
+          <canvas id="chartStartOutcome"></canvas>
+        </div>
+        <div class="chart">
+          <h3>Status Distribution</h3>
+          <canvas id="chartStatusHist"></canvas>
+        </div>
+        <div class="metrics" id="metrics"></div>
       </div>
     </section>
 
-    <div class="footer">
-      <span>Equation: m ẍ + c ẋ + kx = F₀ sin(ωt)</span>
-      <span id="derived"></span>
-    </div>
+    <section class="panel observations" id="observations"></section>
   </div>
 
   <script>
-    (() => {
-      const modeTargets = {
-        shm: { dampingWeight: 0, driveWeight: 0 },
-        damped: { dampingWeight: 1, driveWeight: 0 },
-        driven: { dampingWeight: 1, driveWeight: 1 },
-      };
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const rand = () => Math.random();
+    const gaussian = () => {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    };
 
-      const state = {
-        mode: 'shm',
-        dampingMix: 0,
-        driveMix: 0,
-        t: 0,
-        x: 1,
-        v: 0,
-        running: true,
-        history: [],
-      };
-
-      const params = {
-        mass: 1.3,
-        spring: 2.4,
-        damping: 0.12,
-        driveAmp: 1.2,
-        driveFreq: 1.3,
-        x0: 1,
-        v0: 0,
-      };
-
-      const controls = [
-        ['mass', 'massVal', 'm'],
-        ['spring', 'springVal', 'k'],
-        ['damping', 'dampingVal', 'c'],
-        ['driveAmp', 'driveAmpVal', 'F₀'],
-        ['driveFreq', 'driveFreqVal', 'ω'],
-        ['x0', 'x0Val', 'x₀'],
-        ['v0', 'v0Val', 'v₀'],
-      ];
-
-      const systemCanvas = document.getElementById('systemCanvas');
-      const timeCanvas = document.getElementById('timeCanvas');
-      const resCanvas = document.getElementById('resCanvas');
-      const ctxSystem = systemCanvas.getContext('2d');
-      const ctxTime = timeCanvas.getContext('2d');
-      const ctxRes = resCanvas.getContext('2d');
-
-      const statusText = document.getElementById('statusText');
-      const derivedText = document.getElementById('derived');
-
-      function fitCanvas(canvas, ctx) {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = Math.floor(rect.width * dpr);
-        canvas.height = Math.floor(rect.height * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    function correlation(xs, ys) {
+      const n = xs.length;
+      if (n < 2) return 0;
+      let sx = 0, sy = 0;
+      for (let i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; }
+      const mx = sx / n, my = sy / n;
+      let num = 0, vx = 0, vy = 0;
+      for (let i = 0; i < n; i++) {
+        const dx = xs[i] - mx;
+        const dy = ys[i] - my;
+        num += dx * dy;
+        vx += dx * dx;
+        vy += dy * dy;
       }
+      const den = Math.sqrt(vx * vy);
+      return den > 1e-9 ? num / den : 0;
+    }
 
-      function resize() {
-        fitCanvas(systemCanvas, ctxSystem);
-        fitCanvas(timeCanvas, ctxTime);
-        fitCanvas(resCanvas, ctxRes);
+    const presets = {
+      fair: {
+        meritocracy: 0.72, inequality: 0.30, networkPower: 0.30, failureCost: 0.30,
+        educationAccess: 0.70, capitalReturnRate: 0.30, luckVolatility: 0.35,
+        population: 280, speed: 1.0
+      },
+      elite: {
+        meritocracy: 0.30, inequality: 0.86, networkPower: 0.88, failureCost: 0.72,
+        educationAccess: 0.35, capitalReturnRate: 0.72, luckVolatility: 0.25,
+        population: 280, speed: 1.0
+      },
+      volatile: {
+        meritocracy: 0.52, inequality: 0.50, networkPower: 0.52, failureCost: 0.46,
+        educationAccess: 0.56, capitalReturnRate: 0.46, luckVolatility: 0.90,
+        population: 280, speed: 1.3
+      },
+      harsh: {
+        meritocracy: 0.82, inequality: 0.60, networkPower: 0.25, failureCost: 0.85,
+        educationAccess: 0.52, capitalReturnRate: 0.36, luckVolatility: 0.42,
+        population: 280, speed: 1.0
       }
-      window.addEventListener('resize', resize);
-      resize();
+    };
 
-      controls.forEach(([id, valueId, symbol]) => {
-        const input = document.getElementById(id);
-        const valEl = document.getElementById(valueId);
-        const update = () => {
-          params[id] = Number(input.value);
-          valEl.textContent = `${symbol} ${params[id].toFixed(2)}`;
-          if (id === 'x0' || id === 'v0') return;
-          if (id === 'driveFreq' && state.mode === 'driven') updateStatus();
-        };
-        input.addEventListener('input', update);
-        update();
+    const paramMeta = [
+      ["meritocracy", "Meritocracy", 0, 1, 0.01],
+      ["inequality", "Inequality", 0, 1, 0.01],
+      ["networkPower", "Network power", 0, 1, 0.01],
+      ["failureCost", "Failure cost", 0, 1, 0.01],
+      ["educationAccess", "Education access", 0, 1, 0.01],
+      ["capitalReturnRate", "Capital return", 0, 1, 0.01],
+      ["luckVolatility", "Luck volatility", 0, 1, 0.01],
+      ["population", "Population", 200, 400, 1],
+      ["speed", "Simulation speed", 0.2, 3, 0.05]
+    ];
+
+    const world = { ...presets.fair };
+    const state = {
+      year: 0,
+      running: true,
+      agents: [],
+      targetYear: 0,
+      metrics: null
+    };
+
+    const controlsEl = document.getElementById("controls");
+    const observationsEl = document.getElementById("observations");
+    const yearLabel = document.getElementById("yearLabel");
+    const metricsEl = document.getElementById("metrics");
+    const playPauseBtn = document.getElementById("playPauseBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    // Build slider controls from metadata so math and UI stay synchronized.
+    for (const [key, label, min, max, step] of paramMeta) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "control";
+      wrapper.innerHTML = `
+        <label for="ctrl_${key}">${label}</label>
+        <span class="value" id="val_${key}"></span>
+        <input id="ctrl_${key}" type="range" min="${min}" max="${max}" step="${step}" value="${world[key]}">
+      `;
+      controlsEl.appendChild(wrapper);
+
+      const input = wrapper.querySelector("input");
+      const value = wrapper.querySelector(".value");
+      const refresh = () => {
+        world[key] = key === "population" ? Math.round(+input.value) : +input.value;
+        value.textContent = key === "population" ? world[key] : world[key].toFixed(2);
+      };
+      input.addEventListener("input", () => {
+        refresh();
+        if (key === "population") resetSimulation();
       });
+      refresh();
+    }
 
-      function setMode(newMode) {
-        state.mode = newMode;
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-          btn.classList.toggle('active', btn.dataset.mode === newMode);
+    function setActivePreset(name) {
+      document.querySelectorAll("#presetRow button").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.preset === name);
+      });
+    }
+
+    document.querySelectorAll("#presetRow button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const p = presets[btn.dataset.preset];
+        Object.assign(world, p);
+        for (const [key] of paramMeta) {
+          const el = document.getElementById(`ctrl_${key}`);
+          el.value = world[key];
+          el.dispatchEvent(new Event("input"));
+        }
+        setActivePreset(btn.dataset.preset);
+        resetSimulation();
+      });
+    });
+    setActivePreset("fair");
+
+    function createAgents() {
+      const agents = [];
+      for (let i = 0; i < world.population; i++) {
+        // Starting position reflects inequality: higher inequality stretches starting wealth/status.
+        const baseClass = clamp((gaussian() * 0.16 + 0.5), 0, 1);
+        const inequalityBoost = Math.pow(baseClass, lerp(1.2, 3.8, world.inequality));
+        const startingWealth = clamp(0.08 + inequalityBoost * 1.5 + gaussian() * 0.05, 0.01, 3.4);
+
+        agents.push({
+          effort: clamp(0.2 + rand() * 0.8, 0, 1),
+          ability: clamp(0.18 + rand() * 0.75 + gaussian() * 0.06, 0, 1),
+          wealth: startingWealth,
+          startingWealth,
+          connections: clamp(0.05 + startingWealth * 0.25 + rand() * 0.6, 0, 1),
+          luck: 0,
+          stress: clamp(0.06 + rand() * 0.18, 0, 1),
+          status: clamp(0.1 + startingWealth * 0.28 + rand() * 0.3, 0, 1),
+          failures: 0,
+          x: rand(),
+          y: rand(),
+          tx: rand(),
+          ty: rand()
         });
-        updateStatus();
+      }
+      return agents;
+    }
+
+    function resetSimulation() {
+      state.year = 0;
+      state.targetYear = 0;
+      state.agents = createAgents();
+      state.metrics = null;
+      updateMetricsAndObservations();
+    }
+
+    function stepYear() {
+      state.year += 1;
+      for (const a of state.agents) {
+        a.luck = gaussian() * (0.14 + world.luckVolatility * 0.45);
+
+        const survivability = clamp(a.wealth / 1.6, 0, 1);
+        const effectiveEffort = a.effort * (1 - a.stress * 0.62) * (0.45 + survivability * 0.55);
+
+        // Ability grows from effort + institutions + resources.
+        const learning = (0.018 + world.educationAccess * 0.04) * (0.35 + effectiveEffort * 0.65) * (0.45 + survivability * 0.55);
+        a.ability = clamp(a.ability + learning + gaussian() * 0.01, 0, 1);
+
+        const abilityWeight = world.meritocracy * (1 - world.networkPower * 0.35);
+        const connectionWeight = world.networkPower * (1 - world.meritocracy * 0.35);
+        const effortWeight = 0.22 + world.meritocracy * 0.18;
+
+        const score =
+          abilityWeight * a.ability +
+          connectionWeight * a.connections +
+          effortWeight * effectiveEffort +
+          0.18 * a.luck +
+          0.08 * clamp(a.wealth / 2, 0, 1);
+
+        const threshold = 0.43 + gaussian() * (0.07 + world.luckVolatility * 0.08);
+        const success = score > threshold;
+
+        const capitalGain = a.wealth * (0.004 + world.capitalReturnRate * 0.018) * (0.5 + a.status * 0.8);
+
+        if (success) {
+          const gain = 0.018 + 0.06 * score + capitalGain;
+          a.wealth = clamp(a.wealth + gain, 0.01, 9);
+          a.status = clamp(a.status + 0.03 + score * 0.035, 0, 1);
+          a.connections = clamp(a.connections + 0.01 + a.status * 0.012, 0, 1);
+          a.failures = Math.max(0, a.failures - 1);
+          a.stress = clamp(a.stress - 0.03 + gaussian() * 0.004, 0, 1);
+        } else {
+          const loss = (0.018 + world.failureCost * 0.09) * (0.5 + (1 - survivability) * 0.9);
+          a.wealth = clamp(a.wealth - loss, 0.01, 9);
+          a.status = clamp(a.status - (0.008 + world.failureCost * 0.035), 0, 1);
+          a.failures += 1;
+          a.stress = clamp(a.stress + 0.045 + world.failureCost * 0.04 + a.failures * 0.006, 0, 1);
+        }
+
+        a.status = clamp(a.status + (a.wealth - 0.8) * 0.003, 0, 1);
+        a.tx = clamp(a.wealth / 9, 0, 1);
+        a.ty = 1 - a.status;
       }
 
-      document.getElementById('modeButtons').addEventListener('click', (e) => {
-        const btn = e.target.closest('.mode-btn');
-        if (!btn) return;
-        setMode(btn.dataset.mode);
-      });
+      state.metrics = computeMetrics();
+      updateMetricsAndObservations();
+      yearLabel.textContent = `Year ${state.year}`;
+    }
 
-      document.getElementById('playPause').addEventListener('click', () => {
-        state.running = !state.running;
-        document.getElementById('playPause').textContent = state.running ? 'Pause' : 'Play';
-      });
+    function computeMetrics() {
+      const outcome = state.agents.map(a => a.status * 0.72 + clamp(a.wealth / 3, 0, 1) * 0.28);
+      const effortArr = state.agents.map(a => a.effort);
+      const startArr = state.agents.map(a => clamp(a.startingWealth / 3, 0, 1));
+      const statusArr = state.agents.map(a => a.status);
 
-      function resetState(hard = true) {
-        state.t = 0;
-        state.x = params.x0;
-        state.v = params.v0;
-        if (hard) state.history = [];
-      }
+      const corrEffort = correlation(effortArr, outcome);
+      const corrStart = correlation(startArr, outcome);
 
-      document.getElementById('reset').addEventListener('click', () => resetState(true));
-      document.getElementById('softReset').addEventListener('click', () => resetState(false));
-      resetState(true);
+      // Mobility index: average absolute rank movement in outcome vs start wealth.
+      const n = state.agents.length;
+      const byStart = [...state.agents].sort((a, b) => a.startingWealth - b.startingWealth);
+      const byOutcome = [...state.agents].sort((a, b) =>
+        (a.status * 0.72 + clamp(a.wealth / 3, 0, 1) * 0.28) - (b.status * 0.72 + clamp(b.wealth / 3, 0, 1) * 0.28)
+      );
+      const startRank = new Map();
+      const outRank = new Map();
+      byStart.forEach((a, i) => startRank.set(a, i));
+      byOutcome.forEach((a, i) => outRank.set(a, i));
+      let rankMove = 0;
+      for (const a of state.agents) rankMove += Math.abs(startRank.get(a) - outRank.get(a)) / (n - 1);
+      const mobility = rankMove / n;
 
-      function updateStatus() {
-        const wn = Math.sqrt(params.spring / params.mass);
-        const zeta = params.damping / (2 * Math.sqrt(params.mass * params.spring));
-        const ratio = params.driveFreq / wn;
+      const topCut = Math.max(1, Math.floor(n * 0.1));
+      const topStart = new Set(byStart.slice(-topCut));
+      const topStatus = [...state.agents].sort((a, b) => b.status - a.status).slice(0, topCut);
+      let overlap = 0;
+      for (const a of topStatus) if (topStart.has(a)) overlap++;
+      const topConcentration = overlap / topCut;
 
-        const modeLine = state.mode === 'shm'
-          ? 'Ideal mode: no dissipation, no external forcing.'
-          : state.mode === 'damped'
-            ? 'Damping mode: viscous losses continuously remove energy.'
-            : 'Driven mode: forcing injects energy phase-by-phase into the oscillator.';
+      return {
+        corrEffort,
+        corrStart,
+        mobility,
+        topConcentration,
+        outcome,
+        effortArr,
+        startArr,
+        statusArr
+      };
+    }
 
-        statusText.textContent = `${modeLine}\nNatural frequency ωₙ=${wn.toFixed(2)}, damping ratio ζ=${zeta.toFixed(2)}, forcing ratio r=ω/ωₙ=${ratio.toFixed(2)}.`;
-        derivedText.textContent = `ωₙ=${wn.toFixed(2)}  •  ζ=${zeta.toFixed(2)}  •  r=${ratio.toFixed(2)}`;
-      }
-      updateStatus();
+    function drawPopulation(ctx, canvas) {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
 
-      function stepPhysics(dt) {
-        const target = modeTargets[state.mode];
-        const blend = 2.6;
-        state.dampingMix += (target.dampingWeight - state.dampingMix) * Math.min(1, blend * dt);
-        state.driveMix += (target.driveWeight - state.driveMix) * Math.min(1, blend * dt);
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "rgba(152,172,199,0.08)");
+      grad.addColorStop(1, "rgba(152,172,199,0.01)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
 
-        const m = params.mass;
-        const k = params.spring;
-        const c = params.damping * state.dampingMix;
-        const F0 = params.driveAmp * state.driveMix;
-        const wd = params.driveFreq;
-
-        // Semi-implicit Euler for stable long-run energy behavior.
-        const F = F0 * Math.sin(wd * state.t);
-        const a = (F - c * state.v - k * state.x) / m;
-        state.v += a * dt;
-        state.x += state.v * dt;
-        state.t += dt;
-      }
-
-      function computeEnergy() {
-        const kinetic = 0.5 * params.mass * state.v * state.v;
-        const potential = 0.5 * params.spring * state.x * state.x;
-        return { kinetic, potential, total: kinetic + potential };
-      }
-
-      function pushHistory() {
-        const duration = 18;
-        const sampleTarget = 700;
-        state.history.push({ t: state.t, x: state.x });
-        if (state.history.length > sampleTarget) state.history.shift();
-
-        const tMin = state.t - duration;
-        while (state.history.length && state.history[0].t < tMin) state.history.shift();
-      }
-
-      function clear(ctx, w, h) {
-        ctx.clearRect(0, 0, w, h);
-      }
-
-      function drawGrid(ctx, w, h, cols, rows) {
-        ctx.strokeStyle = 'rgba(154,170,194,0.14)';
+      for (let i = 0; i < 5; i++) {
+        const y = (i / 4) * h;
+        ctx.strokeStyle = "rgba(140,160,190,0.10)";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (let i = 1; i < cols; i++) {
-          const x = (w * i) / cols;
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, h);
-        }
-        for (let j = 1; j < rows; j++) {
-          const y = (h * j) / rows;
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-        }
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
         ctx.stroke();
       }
 
-      function drawSystemPanel() {
-        const w = systemCanvas.clientWidth;
-        const h = systemCanvas.clientHeight;
-        clear(ctxSystem, w, h);
+      for (const a of state.agents) {
+        a.x = lerp(a.x, a.tx, 0.08 * world.speed);
+        a.y = lerp(a.y, a.ty, 0.08 * world.speed);
 
-        drawGrid(ctxSystem, w, h, 8, 8);
+        const px = a.x * w;
+        const py = a.y * h;
+        const r = 1.8 + Math.sqrt(a.wealth) * 1.35;
+        const stressTone = Math.floor(140 + a.stress * 95);
+        const alpha = 0.35 + clamp(a.wealth / 4, 0, 0.4);
 
-        const left = 30;
-        const right = w - 32;
-        const centerY = h * 0.45;
-        const ampScale = Math.min(w, h) * 0.15;
-
-        const xNorm = Math.max(-2, Math.min(2, state.x));
-        const massX = w * 0.58 + xNorm * ampScale;
-
-        ctxSystem.strokeStyle = 'rgba(156,173,196,0.35)';
-        ctxSystem.lineWidth = 1.2;
-        ctxSystem.beginPath();
-        ctxSystem.moveTo(left, centerY);
-        ctxSystem.lineTo(right, centerY);
-        ctxSystem.stroke();
-
-        // equilibrium marker
-        const eqX = w * 0.58;
-        ctxSystem.setLineDash([4, 4]);
-        ctxSystem.strokeStyle = 'rgba(156,173,196,0.45)';
-        ctxSystem.beginPath();
-        ctxSystem.moveTo(eqX, centerY - 100);
-        ctxSystem.lineTo(eqX, centerY + 100);
-        ctxSystem.stroke();
-        ctxSystem.setLineDash([]);
-
-        // spring
-        const springStart = left + 8;
-        const springEnd = massX - 36;
-        const coils = 16;
-        const amp = 10;
-        ctxSystem.strokeStyle = '#9babc0';
-        ctxSystem.lineWidth = 1.6;
-        ctxSystem.beginPath();
-        ctxSystem.moveTo(springStart, centerY);
-        for (let i = 1; i <= coils; i++) {
-          const p = i / coils;
-          const x = springStart + (springEnd - springStart) * p;
-          const y = centerY + (i % 2 === 0 ? amp : -amp);
-          ctxSystem.lineTo(x, y);
-        }
-        ctxSystem.lineTo(springEnd, centerY);
-        ctxSystem.stroke();
-
-        // wall
-        ctxSystem.fillStyle = '#1a2330';
-        ctxSystem.fillRect(left - 12, centerY - 52, 12, 104);
-        for (let y = centerY - 48; y < centerY + 48; y += 8) {
-          ctxSystem.strokeStyle = 'rgba(167,181,201,0.2)';
-          ctxSystem.beginPath();
-          ctxSystem.moveTo(left - 12, y);
-          ctxSystem.lineTo(left - 2, y + 6);
-          ctxSystem.stroke();
-        }
-
-        const energy = computeEnergy();
-        const energyTone = Math.min(1, Math.sqrt(energy.total) / 2.2);
-
-        // mass block with subtle energy glow
-        const bw = 72, bh = 56;
-        const bx = massX - bw / 2;
-        const by = centerY - bh / 2;
-        const grad = ctxSystem.createLinearGradient(bx, by, bx, by + bh);
-        grad.addColorStop(0, `rgba(178,194,216,${0.75 + 0.2 * energyTone})`);
-        grad.addColorStop(1, `rgba(108,127,151,${0.85 + 0.1 * energyTone})`);
-
-        ctxSystem.shadowColor = `rgba(195,176,136,${0.22 * energyTone})`;
-        ctxSystem.shadowBlur = 18 + 14 * energyTone;
-        ctxSystem.fillStyle = grad;
-        roundRect(ctxSystem, bx, by, bw, bh, 12, true, false);
-        ctxSystem.shadowBlur = 0;
-
-        ctxSystem.strokeStyle = 'rgba(224,232,245,0.22)';
-        ctxSystem.lineWidth = 1;
-        roundRect(ctxSystem, bx, by, bw, bh, 12, false, true);
-
-        drawEnergyBars(energy, w, h);
-
-        if (state.driveMix > 0.01) {
-          const force = params.driveAmp * Math.sin(params.driveFreq * state.t);
-          drawForceArrow(force, massX + bw / 2 + 10, centerY);
-        }
-      }
-
-      function drawForceArrow(force, x, y) {
-        const mag = Math.max(-1, Math.min(1, force / Math.max(0.3, params.driveAmp)));
-        const len = 50 * Math.abs(mag);
-        if (len < 4) return;
-
-        const dir = Math.sign(mag);
-        const x2 = x + dir * len;
-
-        ctxSystem.strokeStyle = `rgba(140,167,200,${0.3 + 0.45 * Math.abs(mag)})`;
-        ctxSystem.lineWidth = 2;
-        ctxSystem.beginPath();
-        ctxSystem.moveTo(x, y);
-        ctxSystem.lineTo(x2, y);
-        ctxSystem.stroke();
-
-        ctxSystem.fillStyle = ctxSystem.strokeStyle;
-        ctxSystem.beginPath();
-        ctxSystem.moveTo(x2, y);
-        ctxSystem.lineTo(x2 - dir * 8, y - 5);
-        ctxSystem.lineTo(x2 - dir * 8, y + 5);
-        ctxSystem.closePath();
-        ctxSystem.fill();
-      }
-
-      function drawEnergyBars(energy, w, h) {
-        const x = 22;
-        const y = h * 0.7;
-        const width = 15;
-        const maxH = h * 0.21;
-        const scale = 1 / Math.max(0.001, Math.max(energy.total, 2));
-
-        const kH = Math.min(maxH, energy.kinetic * scale * maxH);
-        const pH = Math.min(maxH, energy.potential * scale * maxH);
-        const tH = Math.min(maxH, energy.total * scale * maxH);
-
-        ctxSystem.fillStyle = 'rgba(200,180,140,0.25)';
-        ctxSystem.fillRect(x, y - tH, width, tH);
-        ctxSystem.fillStyle = 'rgba(140,167,200,0.3)';
-        ctxSystem.fillRect(x + 24, y - pH, width, pH);
-        ctxSystem.fillStyle = 'rgba(170,196,183,0.3)';
-        ctxSystem.fillRect(x + 48, y - kH, width, kH);
-
-        ctxSystem.fillStyle = 'rgba(156,173,196,0.7)';
-        ctxSystem.font = '11px Inter, sans-serif';
-        ctxSystem.fillText('E', x + 4, y + 14);
-        ctxSystem.fillText('P', x + 28, y + 14);
-        ctxSystem.fillText('K', x + 52, y + 14);
-      }
-
-      function drawTimePanel() {
-        const w = timeCanvas.clientWidth;
-        const h = timeCanvas.clientHeight;
-        clear(ctxTime, w, h);
-        drawGrid(ctxTime, w, h, 10, 6);
-
-        const centerY = h * 0.5;
-        ctxTime.strokeStyle = 'rgba(156,173,196,0.35)';
-        ctxTime.beginPath();
-        ctxTime.moveTo(0, centerY);
-        ctxTime.lineTo(w, centerY);
-        ctxTime.stroke();
-
-        if (state.history.length < 2) return;
-
-        const t0 = state.history[0].t;
-        const t1 = state.history[state.history.length - 1].t;
-        const span = Math.max(0.001, t1 - t0);
-        const ampView = 2.2;
-
-        const grad = ctxTime.createLinearGradient(0, 0, w, 0);
-        grad.addColorStop(0, 'rgba(140,167,200,0.38)');
-        grad.addColorStop(1, 'rgba(200,180,140,0.38)');
-        ctxTime.strokeStyle = grad;
-        ctxTime.lineWidth = 1.8;
-        ctxTime.beginPath();
-
-        state.history.forEach((p, i) => {
-          const x = ((p.t - t0) / span) * w;
-          const y = centerY - (p.x / ampView) * (h * 0.42);
-          if (i === 0) ctxTime.moveTo(x, y);
-          else ctxTime.lineTo(x, y);
-        });
-        ctxTime.stroke();
-
-        const last = state.history[state.history.length - 1];
-        const lx = ((last.t - t0) / span) * w;
-        const ly = centerY - (last.x / ampView) * (h * 0.42);
-        ctxTime.fillStyle = '#dce7f5';
-        ctxTime.beginPath();
-        ctxTime.arc(lx, ly, 2.6, 0, Math.PI * 2);
-        ctxTime.fill();
-      }
-
-      function drawResonancePanel() {
-        const w = resCanvas.clientWidth;
-        const h = resCanvas.clientHeight;
-        clear(ctxRes, w, h);
-        drawGrid(ctxRes, w, h, 10, 6);
-
-        const pad = { l: 40, r: 16, t: 18, b: 26 };
-        const plotW = w - pad.l - pad.r;
-        const plotH = h - pad.t - pad.b;
-        const omegaMax = 4;
-
-        const m = params.mass;
-        const k = params.spring;
-        const c = params.damping;
-        const F0 = Math.max(0.0001, params.driveAmp);
-
-        const points = 280;
-        let maxA = 0;
-        const arr = [];
-
-        for (let i = 0; i <= points; i++) {
-          const om = (i / points) * omegaMax;
-          const den = Math.sqrt((k - m * om * om) ** 2 + (c * om) ** 2);
-          const A = F0 / Math.max(1e-6, den);
-          arr.push({ om, A });
-          if (A > maxA) maxA = A;
-        }
-
-        maxA = Math.max(maxA, 0.6);
-        ctxRes.strokeStyle = 'rgba(156,173,196,0.45)';
-        ctxRes.lineWidth = 1;
-        ctxRes.beginPath();
-        ctxRes.moveTo(pad.l, pad.t);
-        ctxRes.lineTo(pad.l, pad.t + plotH);
-        ctxRes.lineTo(pad.l + plotW, pad.t + plotH);
-        ctxRes.stroke();
-
-        const grad = ctxRes.createLinearGradient(0, pad.t, 0, pad.t + plotH);
-        grad.addColorStop(0, 'rgba(200,180,140,0.55)');
-        grad.addColorStop(1, 'rgba(140,167,200,0.42)');
-        ctxRes.strokeStyle = grad;
-        ctxRes.lineWidth = 1.8;
-        ctxRes.beginPath();
-
-        arr.forEach((p, i) => {
-          const x = pad.l + (p.om / omegaMax) * plotW;
-          const y = pad.t + plotH - (p.A / maxA) * plotH;
-          if (i === 0) ctxRes.moveTo(x, y);
-          else ctxRes.lineTo(x, y);
-        });
-        ctxRes.stroke();
-
-        const om = params.driveFreq;
-        const den = Math.sqrt((k - m * om * om) ** 2 + (c * om) ** 2);
-        const Acur = F0 / Math.max(1e-6, den);
-        const mx = pad.l + (om / omegaMax) * plotW;
-        const my = pad.t + plotH - (Acur / maxA) * plotH;
-
-        ctxRes.setLineDash([4, 4]);
-        ctxRes.strokeStyle = 'rgba(220,231,245,0.45)';
-        ctxRes.beginPath();
-        ctxRes.moveTo(mx, pad.t);
-        ctxRes.lineTo(mx, pad.t + plotH);
-        ctxRes.stroke();
-        ctxRes.setLineDash([]);
-
-        const glow = Math.min(1, Acur / (maxA * 0.8));
-        ctxRes.fillStyle = `rgba(220,231,245,${0.7 + 0.3 * glow})`;
-        ctxRes.shadowBlur = 10 * glow;
-        ctxRes.shadowColor = 'rgba(200,180,140,0.45)';
-        ctxRes.beginPath();
-        ctxRes.arc(mx, my, 3.3, 0, Math.PI * 2);
-        ctxRes.fill();
-        ctxRes.shadowBlur = 0;
-
-        ctxRes.fillStyle = 'rgba(156,173,196,0.78)';
-        ctxRes.font = '11px Inter, sans-serif';
-        ctxRes.fillText('ω', w - 12, h - 10);
-        ctxRes.fillText('A', 10, 14);
-      }
-
-      function roundRect(ctx, x, y, w, h, r, fill, stroke) {
-        const rr = Math.min(r, w / 2, h / 2);
         ctx.beginPath();
-        ctx.moveTo(x + rr, y);
-        ctx.arcTo(x + w, y, x + w, y + h, rr);
-        ctx.arcTo(x + w, y + h, x, y + h, rr);
-        ctx.arcTo(x, y + h, x, y, rr);
-        ctx.arcTo(x, y, x + w, y, rr);
-        if (fill) ctx.fill();
-        if (stroke) ctx.stroke();
+        ctx.fillStyle = `rgba(${stressTone}, ${180 - a.stress * 65}, ${205 - a.stress * 75}, ${alpha})`;
+        ctx.shadowBlur = 10 + a.wealth * 4;
+        ctx.shadowColor = `rgba(166, 186, 215, ${0.18 + a.wealth * 0.03})`;
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
       }
+      ctx.shadowBlur = 0;
+    }
 
-      let last = performance.now();
-      function frame(now) {
-        const dtRaw = Math.min(0.033, (now - last) / 1000);
-        last = now;
+    function drawScatter(canvas, xs, ys, xLabelColor = "rgba(166,186,215,0.8)") {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+      const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      const cw = canvas.clientWidth, ch = canvas.clientHeight;
+      ctx.clearRect(0, 0, cw, ch);
 
-        if (state.running) {
-          const dt = dtRaw;
-          const sub = 2;
-          for (let i = 0; i < sub; i++) stepPhysics(dt / sub);
-          pushHistory();
+      ctx.strokeStyle = "rgba(130,150,180,0.18)";
+      ctx.strokeRect(26, 8, cw - 34, ch - 20);
+      ctx.fillStyle = xLabelColor;
+      for (let i = 0; i < xs.length; i++) {
+        const x = 26 + xs[i] * (cw - 34);
+        const y = (ch - 12) - ys[i] * (ch - 20);
+        ctx.fillRect(x - 1.1, y - 1.1, 2.2, 2.2);
+      }
+    }
+
+    function drawHistogram(canvas, values) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+      const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      const cw = canvas.clientWidth, ch = canvas.clientHeight;
+      ctx.clearRect(0, 0, cw, ch);
+
+      const bins = 12;
+      const counts = Array(bins).fill(0);
+      for (const v of values) counts[Math.min(bins - 1, Math.floor(v * bins))]++;
+      const maxCount = Math.max(...counts, 1);
+      const barW = (cw - 30) / bins;
+
+      ctx.strokeStyle = "rgba(130,150,180,0.18)";
+      ctx.strokeRect(20, 8, cw - 26, ch - 18);
+      for (let i = 0; i < bins; i++) {
+        const ratio = counts[i] / maxCount;
+        const bh = ratio * (ch - 26);
+        const x = 22 + i * barW;
+        const y = ch - 10 - bh;
+        ctx.fillStyle = `rgba(145, 166, 197, ${0.25 + ratio * 0.45})`;
+        ctx.fillRect(x, y, barW - 2, bh);
+      }
+    }
+
+    function updateMetricsAndObservations() {
+      const m = state.metrics || computeMetrics();
+      metricsEl.innerHTML = `
+        <div class="metric"><span>Effort ↔ Outcome</span><strong>${m.corrEffort.toFixed(2)}</strong></div>
+        <div class="metric"><span>Start Wealth ↔ Outcome</span><strong>${m.corrStart.toFixed(2)}</strong></div>
+        <div class="metric"><span>Mobility Index</span><strong>${m.mobility.toFixed(2)}</strong></div>
+        <div class="metric"><span>Top-status concentration</span><strong>${(m.topConcentration * 100).toFixed(0)}%</strong></div>
+      `;
+
+      const notes = [];
+      if (m.corrStart - m.corrEffort > 0.18) {
+        notes.push("Inherited position is compounding faster than effort under current rules.");
+      } else if (m.corrEffort > m.corrStart + 0.1) {
+        notes.push("Effort has a clearer link to outcomes than starting wealth in this run.");
+      }
+      if (world.failureCost > 0.62 && m.mobility < 0.35) {
+        notes.push("High failure cost is suppressing second chances and lowering mobility.");
+      }
+      if (world.networkPower > 0.64 && m.corrStart > 0.55) {
+        notes.push("Connections are dominating late-stage advancement pathways.");
+      }
+      if (notes.length === 0) {
+        notes.push("This world rewards persistence mostly for those able to absorb setbacks.");
+      }
+      observationsEl.innerHTML = notes.slice(0, 3).map(n => `<div class="obs">${n}</div>`).join("");
+    }
+
+    const simCanvas = document.getElementById("simCanvas");
+    const effortChart = document.getElementById("chartEffortOutcome");
+    const startChart = document.getElementById("chartStartOutcome");
+    const histChart = document.getElementById("chartStatusHist");
+
+    function resizeSimCanvas() {
+      simCanvas.width = simCanvas.clientWidth * devicePixelRatio;
+      simCanvas.height = simCanvas.clientHeight * devicePixelRatio;
+      const ctx = simCanvas.getContext("2d");
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    }
+
+    playPauseBtn.addEventListener("click", () => {
+      state.running = !state.running;
+      playPauseBtn.textContent = state.running ? "Pause" : "Play";
+    });
+
+    resetBtn.addEventListener("click", resetSimulation);
+
+    let accumulator = 0;
+    let last = performance.now();
+    function animate(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (state.running) {
+        accumulator += dt * world.speed;
+        while (accumulator >= 0.22) {
+          stepYear();
+          accumulator -= 0.22;
         }
-
-        drawSystemPanel();
-        drawTimePanel();
-        drawResonancePanel();
-
-        requestAnimationFrame(frame);
       }
-      requestAnimationFrame(frame);
-    })();
+
+      const ctx = simCanvas.getContext("2d");
+      drawPopulation(ctx, simCanvas);
+      const m = state.metrics || computeMetrics();
+      drawScatter(effortChart, m.effortArr, m.outcome);
+      drawScatter(startChart, m.startArr, m.outcome, "rgba(193,173,160,0.86)");
+      drawHistogram(histChart, m.statusArr);
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener("resize", () => {
+      resizeSimCanvas();
+    });
+
+    resetSimulation();
+    resizeSimCanvas();
+    requestAnimationFrame(animate);
   </script>
 </body>
 </html>
