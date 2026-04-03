@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Young's Double-Slit: Dynamic Interference</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #131a26;
+      --panel-border: #24324a;
+      --text: #dbe7ff;
+      --muted: #9bb2d9;
+      --accent: #7cc4ff;
+      --barrier: #8fa2c9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #10192a 0%, var(--bg) 45%, #06080f 100%);
+      color: var(--text);
+      font-family: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    .app {
+      width: min(1200px, 98vw);
+      display: grid;
+      gap: 14px;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid var(--panel-border);
+      background: #070b14;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+      display: block;
+    }
+
+    .controls {
+      background: rgba(19, 26, 38, 0.92);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button {
+      background: #1d2b43;
+      color: var(--text);
+      border: 1px solid #38547f;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover { filter: brightness(1.08); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px 16px;
+    }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      display: grid;
+      gap: 6px;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    .value {
+      color: var(--accent);
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .toggle-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .toggle-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--text);
+    }
+
+    .hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <canvas id="sim" width="1160" height="620" aria-label="Young's double slit simulation"></canvas>
+
+    <section class="controls">
+      <div class="row">
+        <button id="startBtn">Start</button>
+        <button id="pauseBtn" disabled>Pause</button>
+        <button id="resumeBtn" disabled>Resume</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+
+      <div class="grid">
+        <label>
+          Wavelength
+          <input id="wavelength" type="range" min="18" max="90" value="48" step="1" />
+          <span><span class="value" id="wavelengthVal">48</span> px</span>
+        </label>
+
+        <label>
+          Slit spacing
+          <input id="slitSpacing" type="range" min="30" max="180" value="88" step="1" />
+          <span><span class="value" id="slitSpacingVal">88</span> px</span>
+        </label>
+
+        <label>
+          Screen distance
+          <input id="screenDistance" type="range" min="180" max="520" value="380" step="1" />
+          <span><span class="value" id="screenDistanceVal">380</span> px</span>
+        </label>
+
+        <label>
+          Simulation speed
+          <input id="speed" type="range" min="0.3" max="2.4" value="1" step="0.1" />
+          <span><span class="value" id="speedVal">1.0</span>×</span>
+        </label>
+      </div>
+
+      <div class="toggle-group" role="radiogroup" aria-label="Display mode">
+        <label><input type="radio" name="viewMode" value="both" checked /> Both</label>
+        <label><input type="radio" name="viewMode" value="waves" /> Waves only</label>
+        <label><input type="radio" name="viewMode" value="screen" /> Screen intensity only</label>
+      </div>
+
+      <div class="hint">
+        Tip: let it run for a while to watch fringes build up on the detector.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('sim');
+    const ctx = canvas.getContext('2d');
+
+    const controls = {
+      startBtn: document.getElementById('startBtn'),
+      pauseBtn: document.getElementById('pauseBtn'),
+      resumeBtn: document.getElementById('resumeBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      wavelength: document.getElementById('wavelength'),
+      slitSpacing: document.getElementById('slitSpacing'),
+      screenDistance: document.getElementById('screenDistance'),
+      speed: document.getElementById('speed'),
+      wavelengthVal: document.getElementById('wavelengthVal'),
+      slitSpacingVal: document.getElementById('slitSpacingVal'),
+      screenDistanceVal: document.getElementById('screenDistanceVal'),
+      speedVal: document.getElementById('speedVal')
+    };
+
+    const state = {
+      running: false,
+      paused: false,
+      time: 0,
+      lastTs: 0,
+      viewMode: 'both',
+
+      waveSpeed: 180, // px/s visual propagation speed
+      sourceX: 70,
+      barrierX: 360,
+      slitHeight: 26,
+      slitSpacing: Number(controls.slitSpacing.value),
+      wavelength: Number(controls.wavelength.value),
+      screenDistance: Number(controls.screenDistance.value),
+      speed: Number(controls.speed.value),
+
+      // accumulation buffer for detector brightness
+      detectorAccum: new Float32Array(canvas.height),
+      detectorMax: 1e-6,
+    };
+
+    function updateDisplayedValues() {
+      controls.wavelengthVal.textContent = state.wavelength.toFixed(0);
+      controls.slitSpacingVal.textContent = state.slitSpacing.toFixed(0);
+      controls.screenDistanceVal.textContent = state.screenDistance.toFixed(0);
+      controls.speedVal.textContent = state.speed.toFixed(1);
+    }
+
+    function resetAccumulation() {
+      state.detectorAccum.fill(0);
+      state.detectorMax = 1e-6;
+    }
+
+    function syncParametersFromUI() {
+      state.wavelength = Number(controls.wavelength.value);
+      state.slitSpacing = Number(controls.slitSpacing.value);
+      state.screenDistance = Number(controls.screenDistance.value);
+      state.speed = Number(controls.speed.value);
+      updateDisplayedValues();
+    }
+
+    function slitPositions() {
+      const midY = canvas.height * 0.5;
+      return {
+        top: midY - state.slitSpacing * 0.5,
+        bot: midY + state.slitSpacing * 0.5
+      };
+    }
+
+    function screenX() {
+      return Math.min(canvas.width - 40, state.barrierX + state.screenDistance);
+    }
+
+    // Smooth step for a soft "wave arrival" front.
+    function smoothArrival(tMinusTravel) {
+      const edge = 0.03;
+      if (tMinusTravel <= 0) return 0;
+      if (tMinusTravel >= edge) return 1;
+      const u = tMinusTravel / edge;
+      return u * u * (3 - 2 * u);
+    }
+
+    function drawScene() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const showWaves = state.viewMode === 'both' || state.viewMode === 'waves';
+      const showScreen = state.viewMode === 'both' || state.viewMode === 'screen';
+
+      ctx.fillStyle = '#070b14';
+      ctx.fillRect(0, 0, w, h);
+
+      const { top: slitY1, bot: slitY2 } = slitPositions();
+      const sx = state.sourceX;
+      const bx = state.barrierX;
+      const dx = screenX();
+
+      if (showWaves) {
+        drawIncomingWaveRegion(sx, bx, h);
+        drawInterferenceField(bx, dx, slitY1, slitY2, h);
+      }
+
+      // Draw apparatus (source, barrier with slits, screen)
+      drawSource(sx, h * 0.5);
+      drawBarrierWithSlits(bx, slitY1, slitY2, h);
+      drawScreen(dx, h);
+
+      if (showScreen) {
+        drawDetectorPattern(dx, h);
+      }
+
+      drawLabels(sx, bx, dx, slitY1, slitY2);
+    }
+
+    function drawIncomingWaveRegion(sourceX, barrierX, h) {
+      const step = 4;
+      const k = (2 * Math.PI) / state.wavelength;
+      const omega = k * state.waveSpeed;
+
+      for (let x = 0; x < barrierX; x += step) {
+        const phase = k * (x - sourceX) - omega * state.time;
+        const val = Math.sin(phase);
+        const alpha = 0.08 + 0.14 * Math.abs(val);
+        const c = val >= 0 ? `rgba(124, 196, 255, ${alpha})` : `rgba(120, 155, 255, ${alpha * 0.85})`;
+        ctx.fillStyle = c;
+        ctx.fillRect(x, 0, step + 1, h);
+      }
+    }
+
+    function drawInterferenceField(barrierX, screenX, slitY1, slitY2, h) {
+      const k = (2 * Math.PI) / state.wavelength;
+      const omega = k * state.waveSpeed;
+      const sample = 4;
+
+      for (let x = barrierX; x < screenX; x += sample) {
+        for (let y = 0; y < h; y += sample) {
+          const r1 = Math.hypot(x - barrierX, y - slitY1);
+          const r2 = Math.hypot(x - barrierX, y - slitY2);
+
+          const g1 = smoothArrival(state.time - r1 / state.waveSpeed);
+          const g2 = smoothArrival(state.time - r2 / state.waveSpeed);
+
+          const a1 = g1 * Math.sin(k * r1 - omega * state.time) / Math.sqrt(1 + 0.03 * r1);
+          const a2 = g2 * Math.sin(k * r2 - omega * state.time) / Math.sqrt(1 + 0.03 * r2);
+          const a = a1 + a2;
+
+          const intensity = a * a;
+          const amp = Math.max(-1, Math.min(1, a * 1.7));
+          const alpha = Math.min(0.52, 0.03 + intensity * 1.2);
+
+          if (amp >= 0) {
+            ctx.fillStyle = `rgba(126, 202, 255, ${alpha})`;
+          } else {
+            ctx.fillStyle = `rgba(91, 114, 255, ${alpha})`;
+          }
+          ctx.fillRect(x, y, sample + 1, sample + 1);
+        }
+      }
+    }
+
+    function drawSource(x, y) {
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, 2 * Math.PI);
+      ctx.fillStyle = '#9ad6ff';
+      ctx.fill();
+      ctx.shadowColor = '#9ad6ff';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, 2 * Math.PI);
+      ctx.fillStyle = '#e6f6ff';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    function drawBarrierWithSlits(x, slitY1, slitY2, h) {
+      ctx.fillStyle = 'rgba(154, 173, 206, 0.9)';
+      ctx.fillRect(x - 3, 0, 6, h);
+
+      ctx.fillStyle = '#070b14';
+      ctx.fillRect(x - 4, slitY1 - state.slitHeight / 2, 8, state.slitHeight);
+      ctx.fillRect(x - 4, slitY2 - state.slitHeight / 2, 8, state.slitHeight);
+    }
+
+    function drawScreen(x, h) {
+      ctx.fillStyle = 'rgba(143, 162, 201, 0.82)';
+      ctx.fillRect(x - 3, 0, 6, h);
+    }
+
+    function drawDetectorPattern(screenX, h) {
+      const barWidth = 22;
+      for (let y = 0; y < h; y++) {
+        const val = state.detectorAccum[y] / state.detectorMax;
+        const brightness = Math.pow(Math.min(1, val), 0.5);
+        const r = Math.round(30 + 210 * brightness);
+        const g = Math.round(40 + 220 * brightness);
+        const b = Math.round(70 + 185 * brightness);
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(screenX + 7, y, barWidth, 1);
+      }
+    }
+
+    function drawLabels(sourceX, barrierX, screenX, slitY1, slitY2) {
+      ctx.font = '13px Segoe UI, sans-serif';
+      ctx.fillStyle = '#d8e3ff';
+      ctx.fillText('Coherent source', sourceX - 34, 40);
+      ctx.fillText('Double slit barrier', barrierX - 48, 40);
+      ctx.fillText('Detector screen', screenX - 35, 40);
+
+      ctx.fillStyle = '#9fb1d9';
+      ctx.fillText('Slit 1', barrierX + 10, slitY1 - 10);
+      ctx.fillText('Slit 2', barrierX + 10, slitY2 - 10);
+
+      ctx.fillStyle = '#8ea1cb';
+      ctx.fillText(`λ = ${state.wavelength.toFixed(0)} px`, 20, canvas.height - 20);
+    }
+
+    function updateDetectorAccumulation(dt) {
+      const bx = state.barrierX;
+      const dx = screenX();
+      const { top: slitY1, bot: slitY2 } = slitPositions();
+      const k = (2 * Math.PI) / state.wavelength;
+      const omega = k * state.waveSpeed;
+
+      for (let y = 0; y < canvas.height; y++) {
+        const r1 = Math.hypot(dx - bx, y - slitY1);
+        const r2 = Math.hypot(dx - bx, y - slitY2);
+
+        const g1 = smoothArrival(state.time - r1 / state.waveSpeed);
+        const g2 = smoothArrival(state.time - r2 / state.waveSpeed);
+
+        const a1 = g1 * Math.sin(k * r1 - omega * state.time) / Math.sqrt(1 + 0.03 * r1);
+        const a2 = g2 * Math.sin(k * r2 - omega * state.time) / Math.sqrt(1 + 0.03 * r2);
+        const intensity = (a1 + a2) ** 2;
+
+        // Integration over time gives the gradually emerging fringe pattern.
+        state.detectorAccum[y] += intensity * dt;
+        if (state.detectorAccum[y] > state.detectorMax) {
+          state.detectorMax = state.detectorAccum[y];
+        }
+      }
+    }
+
+    function animate(ts) {
+      if (!state.lastTs) state.lastTs = ts;
+      const dtRaw = (ts - state.lastTs) / 1000;
+      state.lastTs = ts;
+
+      if (state.running && !state.paused) {
+        const dt = Math.min(0.05, dtRaw) * state.speed;
+        state.time += dt;
+        updateDetectorAccumulation(dt);
+      }
+
+      drawScene();
+      requestAnimationFrame(animate);
+    }
+
+    function setRunButtons() {
+      controls.startBtn.disabled = state.running && !state.paused;
+      controls.pauseBtn.disabled = !state.running || state.paused;
+      controls.resumeBtn.disabled = !state.paused;
+    }
+
+    controls.startBtn.addEventListener('click', () => {
+      state.running = true;
+      state.paused = false;
+      setRunButtons();
+    });
+
+    controls.pauseBtn.addEventListener('click', () => {
+      if (!state.running) return;
+      state.paused = true;
+      setRunButtons();
+    });
+
+    controls.resumeBtn.addEventListener('click', () => {
+      if (!state.running) return;
+      state.paused = false;
+      setRunButtons();
+    });
+
+    controls.resetBtn.addEventListener('click', () => {
+      state.time = 0;
+      state.running = false;
+      state.paused = false;
+      resetAccumulation();
+      setRunButtons();
+      drawScene();
+    });
+
+    [controls.wavelength, controls.slitSpacing, controls.screenDistance, controls.speed].forEach((el) => {
+      el.addEventListener('input', () => {
+        syncParametersFromUI();
+        // Restart detector accumulation when geometry/wavelength changes.
+        if (el !== controls.speed) {
+          resetAccumulation();
+          state.time = 0;
+          if (!state.running) drawScene();
+        }
+      });
+    });
+
+    document.querySelectorAll('input[name="viewMode"]').forEach((radio) => {
+      radio.addEventListener('change', (e) => {
+        state.viewMode = e.target.value;
+      });
+    });
+
+    syncParametersFromUI();
+    resetAccumulation();
+    setRunButtons();
+    drawScene();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
